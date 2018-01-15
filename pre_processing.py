@@ -3,48 +3,49 @@ import sys
 import json
 import pandas as pd
 import numpy as np
+import math
 
 def load_json(file):
     with open(file) as json_file:
         data = json.load(json_file)
         return data
 
-def getDatasetDict():
+def getDatasetDict(id):
 
-    json_data= load_json("/home/kesci/work/Broad/meta.json")
-    database=json_data['database']
-    train_dict={}
-    val_dict={}
-    test_dict={}
-    for video_name in database.keys():
-        video_info=database[video_name]
-        video_new_info={}
-        video_subset=video_info["subset"]
-        video_new_info['annotations']=video_info['annotations']
-        if video_subset=="training":
-            train_dict[video_name]=video_new_info
-        elif video_subset=="validation":
-            val_dict[video_name]=video_new_info
-        elif video_subset=="testing":
-            test_dict[video_name]=video_new_info
-    return train_dict,val_dict,test_dict
-    
     json_data= load_json("/home/kesci/work/Broad/INFO/meta.json")
     database=json_data['database']
+    tmp_dict={}
+    len_image=0
+    for video_name in database.keys():
+        if (video_name == id):
+            video_info=database[video_name]
+            video_new_info={}
+            video_subset=video_info["subset"]
+            try:
+                with open("/mnt/BROAD-datasets/video/"+video_subset+"/"+str(video_name)+".pkl",'rb') as f:
+                    img_fea=cPickle.load(f)
+                    len_image=len(img_fea)
+            except:
+                print "Not found!"
+                return
+            
+            # array init
+            labelArr = np.zeros([len_image])
+            segment_info=video_info['annotations']
+            
+            # add seg flag
+            for seg_info in segment_info:
+                begin = float(seg_info["segment"][0])
+                begin = math.ceil(begin)
+                begin = int(begin)
+                
+                end = float(seg_info["segment"][1])
+                end = math.floor(end)
+                end = int(end)
+                labelArr[begin:end+1] = 1
+    return labelArr
 
-    len_image_list=[]
-    video_list=[]
-    subset_list=[]
-    for video in database.keys():
-        dataSet=database[video]["subset"]
-        try:
-            with open("/mnt/BROAD-datasets/video/"+dataSet+"/"+str(video)+".pkl",'rb') as f:
-                img_fea=cPickle.load(f)
-        except:
-            continue
-        len_image=len(img_fea)
-        len_image_list.append(len_image)
-        video_list.append(video)
-        subset_list.append(dataSet)
-        print np.shape(img_fea)
-        
+def getLabelArray(id):
+    labelArray = getDatasetDict(id) 
+    #np.set_printoptions(threshold='nan')
+    print labelArray
